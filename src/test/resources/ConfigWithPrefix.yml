@@ -23,7 +23,7 @@ prepend:
       field2: "{PRFX} string value"
 
 node-test:
-  node-map:
+  node-seq-map:
     a:
       final-field: "final"
       some-string: "{PRFX} some value"
@@ -37,7 +37,7 @@ node-test:
       some-string: "3rd string"
       some-integer: 4321
 
-  node-list:
+  node-seq-list:
     - final-field: "final"
       some-string: "{PRFX} first"
       some-integer: 100
