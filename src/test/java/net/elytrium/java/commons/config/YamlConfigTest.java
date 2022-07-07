@@ -25,7 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +39,7 @@ class YamlConfigTest {
   void testConfigWithPrefix() throws IOException {
     Path configWithPrefixPath = Files.createTempFile("ConfigWithPrefix", ".yml");
     File configWithPrefixFile = this.processTempFile(configWithPrefixPath);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 1; ++i) {
       if (SettingsWithPrefix.IMP.reload(configWithPrefixFile, SettingsWithPrefix.IMP.PREFIX) == YamlConfig.LoadResult.CONFIG_NOT_EXISTS) {
         Assertions.assertEquals(0, i);
       }
@@ -51,6 +54,12 @@ class YamlConfigTest {
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.FIELD_WITH_COMMENT_AT_SAME_LINE);
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
+
+    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("a"), "prefix value >> some value", 1234);
+    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("b"), "2nd string", 1234);
+    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("c"), "3rd string", 4321);
+    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_LIST.get(0), "prefix value >> first", 100);
+    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_LIST.get(1), "second", 200);
 
     this.compareFiles("ConfigWithPrefix.yml", configWithPrefixPath);
   }
@@ -68,6 +77,13 @@ class YamlConfigTest {
     Assertions.assertEquals("{PRFX} regular value", SettingsWithoutPrefix.IMP.REGULAR_FIELD);
 
     this.compareFiles("ConfigWithoutPrefix.yml", configWithoutPrefixPath);
+  }
+
+  private void assertNode(SettingsWithPrefix.NODE_TEST.TestNode node, String expectedString, int expectedInteger) {
+    Assertions.assertEquals(0, node.IGNORED);
+    Assertions.assertEquals("final", node.FINAL_FIELD);
+    Assertions.assertEquals(expectedString, node.SOME_STRING);
+    Assertions.assertEquals(expectedInteger, node.SOME_INTEGER);
   }
 
   private File processTempFile(Path path) {
@@ -231,6 +247,44 @@ class YamlConfigTest {
           )
           public String FIELD2 = "{PRFX} string value";
         }
+      }
+    }
+
+    @Create
+    public NODE_TEST NODE_TEST;
+
+    public static class NODE_TEST {
+
+      public Map<String, TestNode> NODE_MAP;
+
+      {
+        this.NODE_MAP = new HashMap<>();
+        this.NODE_MAP.put("a", createNodeInstance(TestNode.class));
+        this.NODE_MAP.put("b", createNodeInstance(TestNode.class, "2nd string"));
+        this.NODE_MAP.put("c", createNodeInstance(TestNode.class, "3rd string", 4321));
+      }
+
+      @NewLine
+      public List<TestNode> NODE_LIST;
+
+      {
+        this.NODE_LIST = new LinkedList<>();
+        this.NODE_LIST.add(createNodeInstance(TestNode.class, "{PRFX} first", 100));
+        this.NODE_LIST.add(createNodeInstance(TestNode.class, "second", 200));
+      }
+
+      @Node
+      public static class TestNode {
+
+        @Final
+        public String FINAL_FIELD = "final";
+
+        @Ignore
+        public int IGNORED = 0;
+
+        public String SOME_STRING = "{PRFX} some value";
+
+        public int SOME_INTEGER = 1234;
       }
     }
   }

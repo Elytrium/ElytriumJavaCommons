@@ -21,3 +21,26 @@ prepend:
       # FIELD2 PREPEND comment
       # Line 2
       field2: "{PRFX} string value"
+
+node-test:
+  node-map:
+    a:
+      final-field: "final"
+      some-string: "{PRFX} some value"
+      some-integer: 1234
+    b:
+      final-field: "final"
+      some-string: "2nd string"
+      some-integer: 1234
+    c:
+      final-field: "final"
+      some-string: "3rd string"
+      some-integer: 4321
+
+  node-list:
+    - final-field: "final"
+      some-string: "{PRFX} first"
+      some-integer: 100
+    - final-field: "final"
+      some-string: "second"
+      some-integer: 200

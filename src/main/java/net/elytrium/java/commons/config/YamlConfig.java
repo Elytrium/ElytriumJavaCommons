@@ -18,17 +18,23 @@
 package net.elytrium.java.commons.config;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -105,7 +111,7 @@ public class YamlConfig {
     String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).replace("T", "_").replace(":", ".");
     now = now.substring(0, now.lastIndexOf("."));
     try (InputStream fileInputStream = Files.newInputStream(configPath)) {
-      this.processMap(this.yaml.load(fileInputStream), "", configFile, now);
+      this.processMap(this.yaml.load(fileInputStream), null, "", configFile, now);
     } catch (Throwable t) {
       try {
         File configFileCopy = new File(configFile.getParent(), configFile.getName() + "_invalid_" + now);
@@ -122,7 +128,7 @@ public class YamlConfig {
     return LoadResult.SUCCESS;
   }
 
-  private void processMap(Map<String, Object> input, String oldPath, File configFile, String now) {
+  private void processMap(Map<String, Object> input, @Nullable Object instance, String oldPath, @Nullable File configFile, String now) {
     for (Map.Entry<String, Object> entry : input.entrySet()) {
       String key = oldPath + (oldPath.isEmpty() ? oldPath : ".") + entry.getKey();
       Object value = entry.getValue();
@@ -138,9 +144,9 @@ public class YamlConfig {
           }
         }
 
-        this.setFieldByKey(key, this.enablePrefix ? stringValue.replace("{PRFX}", this.currentPrefix) : stringValue, configFile, now);
+        this.setFieldByKey(key, instance, this.enablePrefix ? stringValue.replace("{PRFX}", this.currentPrefix) : stringValue, configFile, now);
       } else {
-        this.setFieldByKey(key, value, configFile, now);
+        this.setFieldByKey(key, instance, value, configFile, now);
       }
     }
   }
@@ -156,18 +162,43 @@ public class YamlConfig {
    * @param value The value.
    */
   @SuppressWarnings("unchecked")
-  private void setFieldByKey(String key, Object value, File configFile, String now) {
+  private void setFieldByKey(String key, @Nullable Object dest, Object value, @Nullable File configFile, String now) {
     String[] split = key.split("\\.");
-    Object instance = this.getInstance(split, this.getClass());
+    Object instance = dest;
+    if (instance == null) {
+      instance = this.getInstance(split, this.getClass());
+    }
     if (instance != null) {
       Field field = this.getField(split, instance);
       if (field != null) {
         try {
           if (field.getType() != Map.class && value instanceof Map) {
-            this.processMap((Map<String, Object>) value, key, configFile, now);
+            this.processMap((Map<String, Object>) value, dest, key, configFile, now);
           } else if (field.getAnnotation(Final.class) == null) {
             if (field.getType() == String.class && !(value instanceof String)) {
               value = String.valueOf(value);
+            } else if (field.getGenericType() instanceof ParameterizedType) {
+              if (field.getType() == Map.class && value instanceof Map) {
+                Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[1];
+                if (parameterType instanceof Class<?>) {
+                  Class<?> parameter = (Class<?>) parameterType;
+                  if (parameter.getAnnotation(Node.class) != null) {
+                    value = ((Map<String, ?>) value).entrySet().stream()
+                            .collect(Collectors.toMap(Map.Entry::getKey,
+                                    e -> this.createNodeInstance(parameter, (Map<String, Object>) e.getValue())));
+                  }
+                }
+              } else if (field.getType() == List.class && value instanceof List) {
+                Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+                if (parameterType instanceof Class<?>) {
+                  Class<?> parameter = (Class<?>) parameterType;
+                  if (parameter.getAnnotation(Node.class) != null) {
+                    value = ((List<?>) value).stream()
+                            .map(obj -> this.createNodeInstance(parameter, (Map<String, Object>) obj))
+                            .collect(Collectors.toList());
+                  }
+                }
+              }
             }
 
             this.setField(field, instance, value);
@@ -181,13 +212,15 @@ public class YamlConfig {
     }
 
     this.logger.debug("Failed to set config option: " + key + ": " + value + " | " + instance);
-    File configFileBackup = new File(configFile.getParent(), configFile.getName() + "_backup_" + now);
-    if (!configFileBackup.exists()) {
-      try {
-        Files.copy(configFile.toPath(), configFileBackup.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        this.logger.warn("Unable to load some of the config options. File was copied to {}", configFileBackup.getName());
-      } catch (Throwable t) {
-        this.logger.warn("Unable to load some of the config options and to make a copy.", t);
+    if (configFile != null) {
+      File configFileBackup = new File(configFile.getParent(), configFile.getName() + "_backup_" + now);
+      if (!configFileBackup.exists()) {
+        try {
+          Files.copy(configFile.toPath(), configFileBackup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          this.logger.warn("Unable to load some of the config options. File was copied to {}", configFileBackup.getName());
+        } catch (Throwable t) {
+          this.logger.warn("Unable to load some of the config options and to make a copy.", t);
+        }
       }
     }
   }
@@ -438,6 +471,74 @@ public class YamlConfig {
   }
 
   /**
+   * Creates a new node instance with unchanged fields.
+   *
+   * @param nodeClass Class with {@link Node} annotation.
+   */
+  protected static <T> T createNodeInstance(Class<T> nodeClass) {
+    try {
+      if (nodeClass.getAnnotation(Node.class) == null) {
+        throw new IllegalStateException(nodeClass.getName() + " is not a node class");
+      }
+      Constructor<T> constructor = nodeClass.getConstructor();
+      return constructor.newInstance();
+    } catch (NoSuchMethodException e) {
+      throw new IllegalStateException("Method not found: " + e.getMessage());
+    } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+      throw new RuntimeException("Unable to create instance of " + nodeClass.getName());
+    }
+  }
+
+  /**
+   * Creates a new node instance with specified field values.
+   *
+   * @param nodeClass Class with {@link Node} annotation.
+   * @param objects   Values
+   */
+  protected <T> T createNodeInstance(Class<T> nodeClass, Map<String, Object> objects) {
+    T instance = createNodeInstance(nodeClass);
+    this.processMap(objects, instance, "", null, null);
+    return instance;
+  }
+
+  /**
+   * Creates a new node instance with specified field values.
+   *
+   * @param nodeClass Class with {@link Node} annotation.
+   * @param values    The values to be set for the fields, not including fields with {@link Final} and {@link Ignore} annotations.
+   */
+  protected static <T> T createNodeInstance(Class<T> nodeClass, Object... values) {
+    try {
+      T instance = createNodeInstance(nodeClass);
+      Field[] fields = nodeClass.getDeclaredFields();
+      int idx = 0;
+      for (Field field : fields) {
+        if (idx >= values.length) {
+          break;
+        }
+        int modifiers = field.getModifiers();
+        if (field.getAnnotation(Final.class) != null
+            || field.getAnnotation(Ignore.class) != null
+            || field.getType().getAnnotation(Ignore.class) != null) {
+          continue;
+        }
+        if (Modifier.isFinal(modifiers)) {
+          throw new IllegalStateException("Field " + field.getName() + " can't be final");
+        } else if (Modifier.isStatic(modifiers)) {
+          throw new IllegalStateException("Field " + field.getName() + " can't be static");
+        }
+        Object value = values[idx];
+        field.setAccessible(true);
+        field.set(instance, value);
+        ++idx;
+      }
+      return instance;
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Unable to set field: " + e.getMessage());
+    }
+  }
+
+  /**
    * Translate a field to a config node.
    */
   private String toNodeName(String fieldName) {
@@ -445,6 +546,10 @@ public class YamlConfig {
   }
 
   private String toYamlString(Object value, String fieldName, String lineSeparator, String spacing) {
+    return this.toYamlString(value, fieldName, lineSeparator, spacing, false);
+  }
+
+  private String toYamlString(Object value, String fieldName, String lineSeparator, String spacing, boolean nl) {
     if (value instanceof Map) {
       Map<?, ?> map = (Map<?, ?>) value;
       if (map.isEmpty()) {
@@ -452,13 +557,13 @@ public class YamlConfig {
       }
 
       StringBuilder builder = new StringBuilder();
-      map.forEach((key, mapValue) ->
-          builder
-              .append(lineSeparator)
-              .append(spacing).append("  ")
-              .append(key).append(": ")
-              .append(this.toYamlString(mapValue, String.valueOf(key), lineSeparator, spacing))
-      );
+      map.forEach((key, mapValue) -> {
+        String data = this.toYamlString(mapValue, String.valueOf(key), lineSeparator, spacing, true);
+        builder.append(lineSeparator)
+               .append(spacing).append("  ")
+               .append(key).append(data.startsWith(lineSeparator) ? ":" : ": ")
+               .append(data);
+      });
 
       return builder.toString();
     } else if (value instanceof List) {
@@ -484,6 +589,22 @@ public class YamlConfig {
         return quoted;
       } else {
         return quoted.replace(this.currentPrefix.equals(this.oldPrefix) ? this.oldPrefix : this.currentPrefix, "{PRFX}");
+      }
+    } else if (value.getClass().getAnnotation(Node.class) != null) {
+      try (
+              ByteArrayOutputStream baos = new ByteArrayOutputStream();
+              PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))
+      ) {
+        if (nl) {
+          writer.write(lineSeparator);
+        }
+        int indent = spacing.length() + 4;
+        this.writeConfigKeyValue(writer, value.getClass(), value, indent);
+        writer.flush();
+        String data = baos.toString("UTF-8");
+        return data.substring(nl ? 0 : indent, data.length() - lineSeparator.length());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
     } else {
       return String.valueOf(value);
@@ -605,4 +726,14 @@ public class YamlConfig {
   protected @interface Ignore {
 
   }
+
+  /**
+   * Indicates that a class is a node.
+   */
+  @Target(ElementType.TYPE)
+  @Retention(RetentionPolicy.RUNTIME)
+  protected @interface Node {
+
+  }
+
 }
