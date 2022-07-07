@@ -480,7 +480,8 @@ public class YamlConfig {
       if (nodeClass.getAnnotation(Node.class) == null) {
         throw new IllegalStateException(nodeClass.getName() + " is not a node class");
       }
-      Constructor<T> constructor = nodeClass.getConstructor();
+      Constructor<T> constructor = nodeClass.getDeclaredConstructor();
+      constructor.setAccessible(true);
       return constructor.newInstance();
     } catch (NoSuchMethodException e) {
       throw new IllegalStateException("Method not found: " + e.getMessage());
