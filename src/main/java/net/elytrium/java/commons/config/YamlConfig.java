@@ -182,19 +182,19 @@ public class YamlConfig {
                 Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[1];
                 if (parameterType instanceof Class<?>) {
                   Class<?> parameter = (Class<?>) parameterType;
-                  if (parameter.getAnnotation(Node.class) != null) {
+                  if (parameter.getAnnotation(NodeSequence.class) != null) {
                     value = ((Map<String, ?>) value).entrySet().stream()
                             .collect(Collectors.toMap(Map.Entry::getKey,
-                                    e -> this.createNodeInstance(parameter, (Map<String, Object>) e.getValue())));
+                                    e -> this.createNodeSequence(parameter, (Map<String, Object>) e.getValue())));
                   }
                 }
               } else if (field.getType() == List.class && value instanceof List) {
                 Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
                 if (parameterType instanceof Class<?>) {
                   Class<?> parameter = (Class<?>) parameterType;
-                  if (parameter.getAnnotation(Node.class) != null) {
+                  if (parameter.getAnnotation(NodeSequence.class) != null) {
                     value = ((List<?>) value).stream()
-                            .map(obj -> this.createNodeInstance(parameter, (Map<String, Object>) obj))
+                            .map(obj -> this.createNodeSequence(parameter, (Map<String, Object>) obj))
                             .collect(Collectors.toList());
                   }
                 }
@@ -471,47 +471,47 @@ public class YamlConfig {
   }
 
   /**
-   * Creates a new node instance with unchanged fields.
+   * Creates a new node sequence instance with unchanged fields.
    *
-   * @param nodeClass Class with {@link Node} annotation.
+   * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
    */
-  protected static <T> T createNodeInstance(Class<T> nodeClass) {
+  protected static <T> T createNodeSequence(Class<T> nodeSequenceClass) {
     try {
-      if (nodeClass.getAnnotation(Node.class) == null) {
-        throw new IllegalStateException(nodeClass.getName() + " is not a node class");
+      if (nodeSequenceClass.getAnnotation(NodeSequence.class) == null) {
+        throw new IllegalStateException(nodeSequenceClass.getName() + " is not a node class");
       }
-      Constructor<T> constructor = nodeClass.getDeclaredConstructor();
+      Constructor<T> constructor = nodeSequenceClass.getDeclaredConstructor();
       constructor.setAccessible(true);
       return constructor.newInstance();
     } catch (NoSuchMethodException e) {
       throw new IllegalStateException("Method not found: " + e.getMessage());
     } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-      throw new RuntimeException("Unable to create instance of " + nodeClass.getName());
+      throw new RuntimeException("Unable to create instance of " + nodeSequenceClass.getName());
     }
   }
 
   /**
-   * Creates a new node instance with specified field values.
+   * Creates a new node instance sequence with specified field values.
    *
-   * @param nodeClass Class with {@link Node} annotation.
+   * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
    * @param objects   Values
    */
-  protected <T> T createNodeInstance(Class<T> nodeClass, Map<String, Object> objects) {
-    T instance = createNodeInstance(nodeClass);
+  protected <T> T createNodeSequence(Class<T> nodeSequenceClass, Map<String, Object> objects) {
+    T instance = createNodeSequence(nodeSequenceClass);
     this.processMap(objects, instance, "", null, null);
     return instance;
   }
 
   /**
-   * Creates a new node instance with specified field values.
+   * Creates a new node sequence instance with specified field values.
    *
-   * @param nodeClass Class with {@link Node} annotation.
+   * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
    * @param values    The values to be set for the fields, not including fields with {@link Final} and {@link Ignore} annotations.
    */
-  protected static <T> T createNodeInstance(Class<T> nodeClass, Object... values) {
+  protected static <T> T createNodeSequence(Class<T> nodeSequenceClass, Object... values) {
     try {
-      T instance = createNodeInstance(nodeClass);
-      Field[] fields = nodeClass.getDeclaredFields();
+      T instance = createNodeSequence(nodeSequenceClass);
+      Field[] fields = nodeSequenceClass.getDeclaredFields();
       int idx = 0;
       for (Field field : fields) {
         if (idx >= values.length) {
@@ -591,7 +591,7 @@ public class YamlConfig {
       } else {
         return quoted.replace(this.currentPrefix.equals(this.oldPrefix) ? this.oldPrefix : this.currentPrefix, "{PRFX}");
       }
-    } else if (value.getClass().getAnnotation(Node.class) != null) {
+    } else if (value.getClass().getAnnotation(NodeSequence.class) != null) {
       try (
               ByteArrayOutputStream baos = new ByteArrayOutputStream();
               PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))
@@ -729,11 +729,11 @@ public class YamlConfig {
   }
 
   /**
-   * Indicates that a class is a node.
+   * Indicates that a class is a node sequence.
    */
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
-  protected @interface Node {
+  protected @interface NodeSequence {
 
   }
 

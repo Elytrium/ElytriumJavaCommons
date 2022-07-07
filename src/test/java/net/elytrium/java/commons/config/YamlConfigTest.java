@@ -55,11 +55,11 @@ class YamlConfigTest {
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
 
-    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("a"), "prefix value >> some value", 1234);
-    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("b"), "2nd string", 1234);
-    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_MAP.get("c"), "3rd string", 4321);
-    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_LIST.get(0), "prefix value >> first", 100);
-    this.assertNode(SettingsWithPrefix.IMP.NODE_TEST.NODE_LIST.get(1), "second", 200);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("a"), "prefix value >> some value", 1234);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("b"), "2nd string", 1234);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("c"), "3rd string", 4321);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.get(0), "prefix value >> first", 100);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.get(1), "second", 200);
 
     this.compareFiles("ConfigWithPrefix.yml", configWithPrefixPath);
   }
@@ -79,7 +79,7 @@ class YamlConfigTest {
     this.compareFiles("ConfigWithoutPrefix.yml", configWithoutPrefixPath);
   }
 
-  private void assertNode(SettingsWithPrefix.NODE_TEST.TestNode node, String expectedString, int expectedInteger) {
+  private void assertNodeSequence(SettingsWithPrefix.NODE_TEST.TestNodeSequence node, String expectedString, int expectedInteger) {
     Assertions.assertEquals(0, node.IGNORED);
     Assertions.assertEquals("final", node.FINAL_FIELD);
     Assertions.assertEquals(expectedString, node.SOME_STRING);
@@ -255,26 +255,26 @@ class YamlConfigTest {
 
     public static class NODE_TEST {
 
-      public Map<String, TestNode> NODE_MAP;
+      public Map<String, TestNodeSequence> NODE_SEQ_MAP;
 
       {
-        this.NODE_MAP = new HashMap<>();
-        this.NODE_MAP.put("a", createNodeInstance(TestNode.class));
-        this.NODE_MAP.put("b", createNodeInstance(TestNode.class, "2nd string"));
-        this.NODE_MAP.put("c", createNodeInstance(TestNode.class, "3rd string", 4321));
+        this.NODE_SEQ_MAP = new HashMap<>();
+        this.NODE_SEQ_MAP.put("a", createNodeSequence(TestNodeSequence.class));
+        this.NODE_SEQ_MAP.put("b", createNodeSequence(TestNodeSequence.class, "2nd string"));
+        this.NODE_SEQ_MAP.put("c", createNodeSequence(TestNodeSequence.class, "3rd string", 4321));
       }
 
       @NewLine
-      public List<TestNode> NODE_LIST;
+      public List<TestNodeSequence> NODE_SEQ_LIST;
 
       {
-        this.NODE_LIST = new LinkedList<>();
-        this.NODE_LIST.add(createNodeInstance(TestNode.class, "{PRFX} first", 100));
-        this.NODE_LIST.add(createNodeInstance(TestNode.class, "second", 200));
+        this.NODE_SEQ_LIST = new LinkedList<>();
+        this.NODE_SEQ_LIST.add(createNodeSequence(TestNodeSequence.class, "{PRFX} first", 100));
+        this.NODE_SEQ_LIST.add(createNodeSequence(TestNodeSequence.class, "second", 200));
       }
 
-      @Node
-      public static class TestNode {
+      @NodeSequence
+      public static class TestNodeSequence {
 
         @Final
         public String FINAL_FIELD = "final";
