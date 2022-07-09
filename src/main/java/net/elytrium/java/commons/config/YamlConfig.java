@@ -45,7 +45,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -164,7 +163,7 @@ public class YamlConfig {
   @SuppressWarnings("unchecked")
   private void setFieldByKey(String key, @Nullable Object dest, Object value, @Nullable File configFile, String now) {
     String[] split = key.split("\\.");
-    Object instance = this.getInstance(dest, split, dest == null ? this.getClass() : dest.getClass());
+    Object instance = this.getInstance(dest, split);
     if (instance != null) {
       Field field = this.getField(split, instance);
       if (field != null) {
@@ -226,59 +225,32 @@ public class YamlConfig {
    * Gets the instance for a specific config node.
    *
    * @param split The node. (split by period)
-   * @return The instance or null.
+   * @return      The instance.
    */
-  @Nullable
-  // TODO: Rewrite
-  private Object getInstance(@Nullable Object instance, String[] split, Class<?> clazz) {
-    try {
-      if (instance == null) {
-        instance = this;
-      }
-      while (split.length > 0) {
-        if (split.length == 1) {
-          return instance;
-        } else {
-          Class<?> found = null;
-
-          for (Class<?> current : clazz.getDeclaredClasses()) {
-            if (Objects.equals(current.getSimpleName(), this.toFieldName(split[0]))) {
-              found = current;
-              break;
-            }
-          }
-
-          if (found == null) {
-            return null;
-          }
-
-          try {
-            Field instanceField = clazz.getDeclaredField(this.toFieldName(split[0]));
-            instanceField.setAccessible(true);
-            Object value = instanceField.get(instance);
-            if (value == null) {
-              value = found.getDeclaredConstructor().newInstance();
-              this.setField(instanceField, instance, value);
-            }
-
-            clazz = found;
-            instance = value;
-            split = Arrays.copyOfRange(split, 1, split.length);
-            continue;
-          } catch (NoSuchFieldException e) {
-            //
-          }
-
-          split = Arrays.copyOfRange(split, 1, split.length);
-          clazz = found;
-          instance = clazz.getDeclaredConstructor().newInstance();
-        }
-      }
-    } catch (Throwable t) {
-      t.printStackTrace();
+  private Object getInstance(@Nullable Object instance, String[] split) {
+    if (instance == null) {
+      instance = this;
     }
 
-    return null;
+    try {
+      for (int i = 0; i < split.length - 1; i++) {
+        String name = this.toFieldName(split[i]);
+        Field field = instance.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        Object value = field.get(instance);
+        if (value == null) {
+          value = field.getType().getDeclaredConstructor().newInstance();
+          this.setField(field, instance, value);
+        }
+        instance = value;
+      }
+    } catch (NoSuchFieldException e) {
+      throw new IllegalStateException("Unable to find field " + e.getMessage() + " in " + instance.getClass().getName());
+    } catch (InvocationTargetException | IllegalAccessException | InstantiationException | NoSuchMethodException e) {
+      throw new IllegalStateException("Unable to create new instance: " + e.getMessage());
+    }
+
+    return instance;
   }
 
   /**
