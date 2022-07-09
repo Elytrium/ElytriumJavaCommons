@@ -39,7 +39,7 @@ class YamlConfigTest {
   void testConfigWithPrefix() throws IOException {
     Path configWithPrefixPath = Files.createTempFile("ConfigWithPrefix", ".yml");
     File configWithPrefixFile = this.processTempFile(configWithPrefixPath);
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 4; ++i) {
       if (SettingsWithPrefix.IMP.reload(configWithPrefixFile, SettingsWithPrefix.IMP.PREFIX) == YamlConfig.LoadResult.CONFIG_NOT_EXISTS) {
         Assertions.assertEquals(0, i);
       }

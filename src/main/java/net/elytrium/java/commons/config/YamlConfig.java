@@ -41,7 +41,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -359,15 +358,7 @@ public class YamlConfig {
   }
 
   private String getSpacing(int indent) {
-    if (indent == 0) {
-      return "";
-    } else if (indent == 1) {
-      return " ";
-    } else {
-      byte[] spacing = new byte[indent];
-      Arrays.fill(spacing, (byte) 0x20); // 0x20 == ' '
-      return new String(spacing, StandardCharsets.UTF_8);
-    }
+    return new String(new char[indent]).replace('\0', ' ');
   }
 
   private void writeNewLines(@Nullable NewLine newLine, PrintWriter writer, String lineSeparator) {
