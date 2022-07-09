@@ -164,10 +164,7 @@ public class YamlConfig {
   @SuppressWarnings("unchecked")
   private void setFieldByKey(String key, @Nullable Object dest, Object value, @Nullable File configFile, String now) {
     String[] split = key.split("\\.");
-    Object instance = dest;
-    if (instance == null) {
-      instance = this.getInstance(split, this.getClass());
-    }
+    Object instance = this.getInstance(dest, split, dest == null ? this.getClass() : dest.getClass());
     if (instance != null) {
       Field field = this.getField(split, instance);
       if (field != null) {
@@ -233,9 +230,11 @@ public class YamlConfig {
    */
   @Nullable
   // TODO: Rewrite
-  private Object getInstance(String[] split, Class<?> clazz) {
+  private Object getInstance(@Nullable Object instance, String[] split, Class<?> clazz) {
     try {
-      Object instance = this;
+      if (instance == null) {
+        instance = this;
+      }
       while (split.length > 0) {
         if (split.length == 1) {
           return instance;
@@ -491,12 +490,12 @@ public class YamlConfig {
   }
 
   /**
-   * Creates a new node instance sequence with specified field values.
+   * Creates a new node sequence instance with specified field values.
    *
    * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
-   * @param objects   Values
+   * @param objects           Values
    */
-  protected <T> T createNodeSequence(Class<T> nodeSequenceClass, Map<String, Object> objects) {
+  private <T> T createNodeSequence(Class<T> nodeSequenceClass, Map<String, Object> objects) {
     T instance = createNodeSequence(nodeSequenceClass);
     this.processMap(objects, instance, "", null, null);
     return instance;
@@ -506,7 +505,7 @@ public class YamlConfig {
    * Creates a new node sequence instance with specified field values.
    *
    * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
-   * @param values    The values to be set for the fields, not including fields with {@link Final} and {@link Ignore} annotations.
+   * @param values            The values to be set for the fields, not including fields with {@link Final} and {@link Ignore} annotations.
    */
   protected static <T> T createNodeSequence(Class<T> nodeSequenceClass, Object... values) {
     try {
@@ -514,28 +513,33 @@ public class YamlConfig {
       Field[] fields = nodeSequenceClass.getDeclaredFields();
       int idx = 0;
       for (Field field : fields) {
-        if (idx >= values.length) {
-          break;
-        }
-        int modifiers = field.getModifiers();
         if (field.getAnnotation(Final.class) != null
             || field.getAnnotation(Ignore.class) != null
             || field.getType().getAnnotation(Ignore.class) != null) {
           continue;
         }
+        int modifiers = field.getModifiers();
         if (Modifier.isFinal(modifiers)) {
           throw new IllegalStateException("Field " + field.getName() + " can't be final");
         } else if (Modifier.isStatic(modifiers)) {
           throw new IllegalStateException("Field " + field.getName() + " can't be static");
         }
-        Object value = values[idx];
         field.setAccessible(true);
+        Object value = idx >= values.length ? null : values[idx];
+        if (field.getAnnotation(Create.class) != null && !field.getType().isInstance(value)) {
+          field.set(instance, field.getType().getDeclaredConstructor().newInstance());
+          continue;
+        } else if (value == null) {
+          continue;
+        }
         field.set(instance, value);
         ++idx;
       }
       return instance;
     } catch (IllegalAccessException e) {
       throw new RuntimeException("Unable to set field: " + e.getMessage());
+    } catch (InvocationTargetException | InstantiationException | NoSuchMethodException e) {
+      throw new IllegalStateException("Unable to create new instance: " + e.getMessage());
     }
   }
 
@@ -550,7 +554,7 @@ public class YamlConfig {
     return this.toYamlString(value, fieldName, lineSeparator, spacing, false);
   }
 
-  private String toYamlString(Object value, String fieldName, String lineSeparator, String spacing, boolean nl) {
+  private String toYamlString(Object value, String fieldName, String lineSeparator, String spacing, boolean isMap) {
     if (value instanceof Map) {
       Map<?, ?> map = (Map<?, ?>) value;
       if (map.isEmpty()) {
@@ -596,14 +600,14 @@ public class YamlConfig {
               ByteArrayOutputStream baos = new ByteArrayOutputStream();
               PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))
       ) {
-        if (nl) {
+        if (isMap) {
           writer.write(lineSeparator);
         }
         int indent = spacing.length() + 4;
         this.writeConfigKeyValue(writer, value.getClass(), value, indent);
         writer.flush();
         String data = baos.toString("UTF-8");
-        return data.substring(nl ? 0 : indent, data.length() - lineSeparator.length());
+        return data.substring(isMap ? 0 : indent, data.length() - lineSeparator.length());
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

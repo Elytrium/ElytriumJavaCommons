@@ -84,6 +84,8 @@ class YamlConfigTest {
     Assertions.assertEquals("final", node.FINAL_FIELD);
     Assertions.assertEquals(expectedString, node.SOME_STRING);
     Assertions.assertEquals(expectedInteger, node.SOME_INTEGER);
+    Assertions.assertEquals("prefix value >> value", node.OTHER_NODE_SEQ.A);
+    Assertions.assertEquals(10, node.OTHER_NODE_SEQ.B);
   }
 
   private File processTempFile(Path path) {
@@ -285,6 +287,14 @@ class YamlConfigTest {
         public String SOME_STRING = "{PRFX} some value";
 
         public int SOME_INTEGER = 1234;
+
+        @Create
+        public OTHER_NODE_SEQ OTHER_NODE_SEQ;
+
+        public static class OTHER_NODE_SEQ {
+          public String A = "{PRFX} value";
+          public int B = 10;
+        }
       }
     }
   }
