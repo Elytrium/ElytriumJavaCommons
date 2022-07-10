@@ -55,7 +55,7 @@ class YamlConfigTest {
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
     Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
 
-    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("a"), "prefix value >> some value", 1234);
+    this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("1"), "prefix value >> some value", 1234);
     this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("b"), "2nd string", 1234);
     this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("c"), "3rd string", 4321);
     this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.get(0), "prefix value >> first", 100);
@@ -261,7 +261,7 @@ class YamlConfigTest {
 
       {
         this.NODE_SEQ_MAP = new HashMap<>();
-        this.NODE_SEQ_MAP.put("a", createNodeSequence(TestNodeSequence.class));
+        this.NODE_SEQ_MAP.put("1", createNodeSequence(TestNodeSequence.class));
         this.NODE_SEQ_MAP.put("b", createNodeSequence(TestNodeSequence.class, "2nd string"));
         this.NODE_SEQ_MAP.put("c", createNodeSequence(TestNodeSequence.class, "3rd string", 4321));
       }

@@ -24,7 +24,7 @@ prepend:
 
 node-test:
   node-seq-map:
-    a:
+    "1":
       final-field: "final"
       some-string: "{PRFX} some value"
       some-integer: 1234

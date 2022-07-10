@@ -109,7 +109,7 @@ public class YamlConfig {
     String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).replace("T", "_").replace(":", ".");
     now = now.substring(0, now.lastIndexOf("."));
     try (InputStream fileInputStream = Files.newInputStream(configPath)) {
-      this.processMap(this.yaml.load(fileInputStream), null, "", configFile, now);
+      this.processMap(this.yaml.load(fileInputStream), this, "", configFile, now);
     } catch (Throwable t) {
       try {
         File configFileCopy = new File(configFile.getParent(), configFile.getName() + "_invalid_" + now);
@@ -126,7 +126,7 @@ public class YamlConfig {
     return LoadResult.SUCCESS;
   }
 
-  private void processMap(Map<String, Object> input, @Nullable Object instance, String oldPath, @Nullable File configFile, String now) {
+  private void processMap(Map<String, Object> input, Object instance, String oldPath, @Nullable File configFile, String now) {
     for (Map.Entry<String, Object> entry : input.entrySet()) {
       String key = oldPath + (oldPath.isEmpty() ? oldPath : ".") + entry.getKey();
       Object value = entry.getValue();
@@ -160,7 +160,7 @@ public class YamlConfig {
    * @param value The value.
    */
   @SuppressWarnings("unchecked")
-  private void setFieldByKey(String key, @Nullable Object dest, Object value, @Nullable File configFile, String now) {
+  private void setFieldByKey(String key, Object dest, Object value, @Nullable File configFile, String now) {
     String[] split = key.split("\\.");
     Object instance = this.getInstance(dest, split);
     if (instance != null) {
@@ -226,11 +226,7 @@ public class YamlConfig {
    * @param split The node. (split by period)
    * @return      The instance.
    */
-  private Object getInstance(@Nullable Object instance, String[] split) {
-    if (instance == null) {
-      instance = this;
-    }
-
+  private Object getInstance(@NonNull Object instance, String[] split) {
     try {
       for (int i = 0; i < split.length - 1; i++) {
         String name = this.toFieldName(split[i]);
@@ -510,6 +506,9 @@ public class YamlConfig {
    * Translate a field to a config node.
    */
   private String toNodeName(String fieldName) {
+    if (fieldName.matches("^\\d+$")) {
+      return '"' + fieldName + '"';
+    }
     return fieldName.toLowerCase(Locale.ROOT).replace("_", "-");
   }
 
@@ -529,7 +528,7 @@ public class YamlConfig {
         String data = this.toYamlString(mapValue, String.valueOf(key), lineSeparator, spacing, true);
         builder.append(lineSeparator)
                .append(spacing).append("  ")
-               .append(key).append(data.startsWith(lineSeparator) ? ":" : ": ")
+               .append(this.toNodeName(String.valueOf(key))).append(data.startsWith(lineSeparator) ? ":" : ": ")
                .append(data);
       });
 
