@@ -25,21 +25,21 @@ prepend:
 node-test:
   node-seq-map:
     "1":
-      final-field: "final"
+      final-field: "{PRFX} final"
       some-string: "{PRFX} some value"
       some-integer: 1234
       other-node-seq:
         a: "{PRFX} value"
         b: 10
     b:
-      final-field: "final"
+      final-field: "{PRFX} final"
       some-string: "2nd string"
       some-integer: 1234
       other-node-seq:
         a: "{PRFX} value"
         b: 10
     c:
-      final-field: "final"
+      final-field: "{PRFX} final"
       some-string: "3rd string"
       some-integer: 4321
       other-node-seq:
@@ -47,13 +47,13 @@ node-test:
         b: 10
 
   node-seq-list:
-    - final-field: "final"
+    - final-field: "{PRFX} final"
       some-string: "{PRFX} first"
       some-integer: 100
       other-node-seq:
         a: "{PRFX} value"
         b: 10
-    - final-field: "final"
+    - final-field: "{PRFX} final"
       some-string: "second"
       some-integer: 200
       other-node-seq:
