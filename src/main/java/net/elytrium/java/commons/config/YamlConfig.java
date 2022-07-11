@@ -435,7 +435,6 @@ public class YamlConfig {
         if (field.getType() != String.class) {
           throw new IllegalAccessException(field.getType() + " is incompatible with placeholders");
         }
-        System.out.println(value);
         Placeholders placeholders = field.getAnnotation(Placeholders.class);
         net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
         data.placeholders = placeholders.value();
