@@ -42,7 +42,7 @@ class YamlConfigTest {
     File configWithPrefixFile = this.processTempFile(configWithPrefixPath);
 
       {
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < 1; ++i) {
           if (SettingsWithPrefix.IMP.reload(configWithPrefixFile, SettingsWithPrefix.IMP.PREFIX) == YamlConfig.LoadResult.CONFIG_NOT_EXISTS) {
             Assertions.assertEquals(0, i);
           }
@@ -72,24 +72,24 @@ class YamlConfigTest {
         Files.copy(Objects.requireNonNull(YamlConfigTest.class.getResourceAsStream("/ChangedConfigWithPrefix.yml")), configWithPrefixPath);
         Assertions.assertEquals(YamlConfig.LoadResult.SUCCESS, SettingsWithPrefix.IMP.reload(configWithPrefixFile, SettingsWithPrefix.IMP.PREFIX));
 
-        Assertions.assertNotEquals("prefix | final value", SettingsWithPrefix.IMP.FINAL_FIELD);
-        Assertions.assertEquals("prefix |", SettingsWithPrefix.IMP.PREFIX);
-        Assertions.assertEquals("prefix | other regular value", SettingsWithPrefix.IMP.REGULAR_FIELD);
-        Assertions.assertEquals("prefix | other string value", SettingsWithPrefix.IMP.PREPEND.STRING_FIELD);
-        Assertions.assertEquals("prefix | other value", SettingsWithPrefix.IMP.PREPEND.FIELD_WITH_COMMENT_AT_SAME_LINE);
-        Assertions.assertEquals("prefix | value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
-        Assertions.assertEquals("prefix | changed value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
+        Assertions.assertNotEquals("a final value", SettingsWithPrefix.IMP.FINAL_FIELD);
+        Assertions.assertEquals("a", SettingsWithPrefix.IMP.PREFIX);
+        Assertions.assertEquals("a other regular value", SettingsWithPrefix.IMP.REGULAR_FIELD);
+        Assertions.assertEquals("a other string value", SettingsWithPrefix.IMP.PREPEND.STRING_FIELD);
+        Assertions.assertEquals("a other value", SettingsWithPrefix.IMP.PREPEND.FIELD_WITH_COMMENT_AT_SAME_LINE);
+        Assertions.assertEquals("a value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
+        Assertions.assertEquals("a changed value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
 
         Assertions.assertNotNull(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP);
         Assertions.assertEquals(2, SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.size());
         Assertions.assertTrue(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.containsKey("other"));
         Assertions.assertTrue(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.containsKey("2"));
-        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("other"), "string", 128, "prefix | some value", 256);
-        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("2"), "prefix | another string", 512, "prefix | another value", 1024);
+        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("other"), "string", 128, "a some value", 256);
+        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("2"), "a another string", 512, "a another value", 1024);
 
         Assertions.assertNotNull(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST);
         Assertions.assertEquals(1, SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.size());
-        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.get(0), "prefix | yet another string", 8, "prefix | yet another value", 2);
+        this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_LIST.get(0), "a yet another string", 8, "a yet another value", 2);
 
         this.compareFiles("ChangedConfigWithPrefix.yml", configWithPrefixPath);
       }
