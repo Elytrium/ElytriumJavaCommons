@@ -18,6 +18,7 @@
 package net.elytrium.java.commons.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -27,20 +28,24 @@ public class Placeholders {
   static class Data {
     String[] placeholders;
     String value;
+
+    @Override
+    public int hashCode() {
+      return 31 * Arrays.hashCode(this.placeholders) + this.value.hashCode();
+    }
+
   }
 
   static final Map<String, Data> data = new HashMap<>();
 
   static boolean isID(String id) {
     byte[] bytes = id.getBytes(StandardCharsets.UTF_8);
-    String keyString;
-    int key;
-    return bytes[0] == 0x15 && bytes[1] == 0x7F && (keyString = id.substring(2)).matches("^\\d+$")
-            && (key = Integer.parseInt(keyString)) >= 0 && key < data.size();
+    return bytes[0] == 0x15 && bytes[1] == 0x7F && id.substring(2).matches("^-?\\d+$");
   }
 
   static Data dataFromID(String id) {
     if (!isID(id)) {
+      System.out.println(id);
       throw new IllegalStateException("Invalid field ID. Reload config.");
     }
     return Placeholders.data.get(id);

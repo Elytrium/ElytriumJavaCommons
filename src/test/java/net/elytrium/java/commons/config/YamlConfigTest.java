@@ -97,7 +97,7 @@ class YamlConfigTest {
         this.compareFiles("ChangedConfigWithPrefix.yml", configWithPrefixPath);
       }
 
-    Assertions.assertEquals(2, Placeholders.data.size());
+    Assertions.assertEquals(1, Placeholders.data.size());
   }
 
   @Test
