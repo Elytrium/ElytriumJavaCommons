@@ -41,6 +41,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -366,48 +368,17 @@ public class YamlConfig {
   }
 
   private void writePrependComments(Comment[] comments, PrintWriter writer, String spacing, String lineSeparator) {
-    for (Comment comment : comments) {
-      if (comment.at().equals(Comment.At.PREPEND)) {
-        for (String commentLine : comment.value()) {
-          writer.write(spacing + "# " + commentLine.replace("\n", lineSeparator) + lineSeparator);
-        }
-      }
-    }
+    Arrays.stream(comments)
+            .filter(comment -> comment.at().equals(Comment.At.PREPEND))
+            .flatMap(comment -> Arrays.stream(comment.value()))
+            .forEach(commentLine -> writer.write(spacing + "# " + commentLine.replace("\n", lineSeparator) + lineSeparator));
   }
 
   private void writeComments(Comment[] comments, PrintWriter writer, String lineSeparator, String spacing) {
-    int commentsAmount = comments.length;
-    if (commentsAmount == 0) {
-      writer.write(lineSeparator);
-    } else {
-      boolean sameLineHasWritten = false;
-      boolean separatorHasWritten = false;
-      for (Comment comment : comments) {
-        Comment.At at = comment.at();
-        String[] value = comment.value();
-        if (value == null || value.length == 0 || at.equals(Comment.At.PREPEND)) {
-          if (!separatorHasWritten) {
-            writer.write(lineSeparator);
-            separatorHasWritten = true;
-          }
-        } else if (at.equals(Comment.At.SAME_LINE)) {
-          if (!sameLineHasWritten) {
-            writer.write(" # " + value[0].replace("\n", lineSeparator));
-            writer.write(lineSeparator);
-            sameLineHasWritten = true;
-            separatorHasWritten = true;
-          }
-        } else if (at.equals(Comment.At.APPEND)) {
-          if (!separatorHasWritten) {
-            writer.write(lineSeparator);
-            separatorHasWritten = true;
-          }
-          for (String commentLine : value) {
-            writer.write(spacing + "# " + commentLine.replace("\n", lineSeparator) + lineSeparator);
-          }
-        }
-      }
-    }
+    Map<Comment.At, List<Comment>> groups = Arrays.stream(comments).collect(Collectors.groupingBy(Comment::at));
+    writer.write((groups.containsKey(Comment.At.SAME_LINE) ? " # " + groups.get(Comment.At.SAME_LINE).get(0).value()[0] : "") + lineSeparator);
+    groups.getOrDefault(Comment.At.APPEND, Collections.emptyList()).stream().flatMap(comment -> Arrays.stream(comment.value()))
+            .forEach(commentLine -> writer.write(spacing + "# " + commentLine.replace("\n", lineSeparator) + lineSeparator));
   }
 
   private void setField(Field field, Object owner, Object value) throws IllegalAccessException {
