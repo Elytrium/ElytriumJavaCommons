@@ -42,7 +42,7 @@ class YamlConfigTest {
     File configWithPrefixFile = this.processTempFile(configWithPrefixPath);
 
       {
-        for (int i = 0; i < 1; ++i) {
+        for (int i = 0; i < 4; ++i) {
           if (SettingsWithPrefix.IMP.reload(configWithPrefixFile, SettingsWithPrefix.IMP.PREFIX) == YamlConfig.LoadResult.CONFIG_NOT_EXISTS) {
             Assertions.assertEquals(0, i);
           }
@@ -57,6 +57,8 @@ class YamlConfigTest {
         Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.FIELD_WITH_COMMENT_AT_SAME_LINE);
         Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
         Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
+        Assertions.assertEquals("This is string with placeholders",
+                Placeholders.replace(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS, "string", "placeholders"));
 
         this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("1"), "prefix value >> some value", 1234, "prefix value >> value", 10);
         this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("b"), "2nd string", 1234, "prefix value >> value", 10);
@@ -79,6 +81,7 @@ class YamlConfigTest {
         Assertions.assertEquals("a other value", SettingsWithPrefix.IMP.PREPEND.FIELD_WITH_COMMENT_AT_SAME_LINE);
         Assertions.assertEquals("a value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
         Assertions.assertEquals("a changed value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
+        Assertions.assertEquals("placeholders test", Placeholders.replace(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS, "test", "placeholders"));
 
         Assertions.assertNotNull(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP);
         Assertions.assertEquals(2, SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.size());
@@ -93,6 +96,8 @@ class YamlConfigTest {
 
         this.compareFiles("ChangedConfigWithPrefix.yml", configWithPrefixPath);
       }
+
+    Assertions.assertEquals(2, Placeholders.data.size());
   }
 
   @Test
@@ -214,6 +219,9 @@ class YamlConfigTest {
     public String PREFIX = "prefix value >>";
 
     public String REGULAR_FIELD = "{PRFX} regular value";
+
+    @Placeholders({ "test", "test2" })
+    public String STRING_WITH_PLACEHOLDERS = "This is {TEST} with {TEST2}";
 
     @Create
     public PREPEND PREPEND;

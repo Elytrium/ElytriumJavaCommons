@@ -43,6 +43,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,6 +60,7 @@ public class YamlConfig {
   private final Yaml yaml = new Yaml();
   private YamlConfig original;
   private String prefix = null;
+  private final List<String> placeholders = new LinkedList<>();
 
   private Logger logger = LoggerFactory.getLogger(YamlConfig.class);
 
@@ -101,6 +103,9 @@ public class YamlConfig {
     if (!configFile.exists()) {
       return LoadResult.CONFIG_NOT_EXISTS;
     }
+
+    this.placeholders.forEach(net.elytrium.java.commons.config.Placeholders.data::remove);
+    this.placeholders.clear();
 
     this.prefix = prefix;
 
@@ -145,10 +150,6 @@ public class YamlConfig {
 
       this.setFieldByKey(key, instance, value, configFile, now, usePrefix);
     }
-  }
-
-  private boolean isBlank(String value) {
-    return value.trim().isEmpty();
   }
 
   /**
@@ -352,7 +353,10 @@ public class YamlConfig {
           String originalFieldValue = this.toYamlString(field.get(original), fieldName, lineSeparator, spacing, usePrefix);
           String valueToWrite = fieldValue;
 
-          if (this.prefix != null) {
+          String idString = valueToWrite.replace("\"", "");
+          if (valueToWrite.startsWith("\"") && valueToWrite.endsWith("\"") && net.elytrium.java.commons.config.Placeholders.isID(idString)) {
+            valueToWrite = '"' + net.elytrium.java.commons.config.Placeholders.dataFromID(idString).value + '"';
+          } else if (this.prefix != null) {
             if (fieldValue.startsWith("\"") && fieldValue.endsWith("\"")) { // String
               if (fieldValue.replace("{PRFX}", this.prefix).equals(originalFieldValue.replace("{PRFX}", this.prefix))) {
                 valueToWrite = originalFieldValue;
@@ -427,6 +431,19 @@ public class YamlConfig {
         }
         value = ((Map<?, ?>) value).entrySet().stream()
                 .collect(Collectors.toMap(e -> String.valueOf(e.getKey()), Map.Entry::getValue));
+      } else if (field.getAnnotation(Placeholders.class) != null) {
+        if (field.getType() != String.class) {
+          throw new IllegalAccessException(field.getType() + " is incompatible with placeholders");
+        }
+        System.out.println(value);
+        Placeholders placeholders = field.getAnnotation(Placeholders.class);
+        net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
+        data.placeholders = placeholders.value();
+        data.value = (String) value;
+        String key = new String(new byte[] { 0x15, 0x7F }, StandardCharsets.UTF_8) + net.elytrium.java.commons.config.Placeholders.data.size();
+        net.elytrium.java.commons.config.Placeholders.data.put(key, data);
+        this.placeholders.add(key);
+        value = key;
       }
       field.set(owner, value);
     }
@@ -701,6 +718,14 @@ public class YamlConfig {
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
   protected @interface NodeSequence {
+
+  }
+
+  @Target(ElementType.FIELD)
+  @Retention(RetentionPolicy.RUNTIME)
+  protected @interface Placeholders {
+
+    String[] value();
 
   }
 

@@ -1,6 +1,7 @@
 final-field: "{PRFX} final value"
 prefix: "prefix value >>"
 regular-field: "{PRFX} regular value"
+string-with-placeholders: "This is {TEST} with {TEST2}"
 
 # PREPEND comment Line 1
 # PREPEND comment Line 2
