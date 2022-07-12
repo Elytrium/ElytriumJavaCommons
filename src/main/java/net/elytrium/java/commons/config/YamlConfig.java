@@ -47,7 +47,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -58,20 +57,10 @@ import org.yaml.snakeyaml.Yaml;
 // TODO: Customizable placeholders, more docs
 public class YamlConfig {
 
-  private static final String PLACEHOLDER_ID_PREFIX;
-
-  static {
-    byte[] bytes = new byte[10];
-    ThreadLocalRandom.current().nextBytes(bytes);
-    PLACEHOLDER_ID_PREFIX = new String(bytes, StandardCharsets.UTF_8);
-  }
-
-  private static long counter = 0;
-
   private final Yaml yaml = new Yaml();
   private YamlConfig original;
   private String prefix = null;
-  private final List<String> placeholders = new LinkedList<>();
+  private final List<Integer> placeholders = new LinkedList<>();
 
   private Logger logger = LoggerFactory.getLogger(YamlConfig.class);
 
@@ -115,8 +104,7 @@ public class YamlConfig {
       return LoadResult.CONFIG_NOT_EXISTS;
     }
 
-    this.placeholders.forEach(net.elytrium.java.commons.config.Placeholders.data::remove);
-    this.placeholders.clear();
+    this.dispose();
 
     this.prefix = prefix;
 
@@ -189,13 +177,8 @@ public class YamlConfig {
                 throw new IllegalAccessException(field.getType() + " is incompatible with placeholders");
               }
               Placeholders placeholders = field.getAnnotation(Placeholders.class);
-              net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
-              data.placeholders = placeholders.value();
-              data.value = (String) value;
-              String placeholderKey = PLACEHOLDER_ID_PREFIX + (counter++);
-              net.elytrium.java.commons.config.Placeholders.data.put(placeholderKey, data);
-              this.placeholders.add(placeholderKey);
-              value = placeholderKey;
+              int hash = net.elytrium.java.commons.config.Placeholders.addPlaceholders(value, placeholders.value());
+              this.placeholders.add(hash);
             } else if (field.getGenericType() instanceof ParameterizedType) {
               if (field.getType() == Map.class && value instanceof Map) {
                 Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[1];
@@ -378,11 +361,7 @@ public class YamlConfig {
           String originalFieldValue = this.toYamlString(field.get(original), fieldName, lineSeparator, spacing, usePrefix);
           String valueToWrite = fieldValue;
 
-          String idString = valueToWrite.replace("\"", "");
-          if (valueToWrite.startsWith("\"") && valueToWrite.endsWith("\"")
-                  && net.elytrium.java.commons.config.Placeholders.data.containsKey(idString)) {
-            valueToWrite = '"' + net.elytrium.java.commons.config.Placeholders.dataFromID(idString).value + '"';
-          } else if (this.prefix != null) {
+          if (this.prefix != null) {
             if (fieldValue.startsWith("\"") && fieldValue.endsWith("\"")) { // String
               if (fieldValue.replace("{PRFX}", this.prefix).equals(originalFieldValue.replace("{PRFX}", this.prefix))) {
                 valueToWrite = originalFieldValue;
@@ -607,6 +586,12 @@ public class YamlConfig {
     } else {
       return String.valueOf(value);
     }
+  }
+
+  public void dispose() {
+    this.placeholders.forEach(net.elytrium.java.commons.config.Placeholders.placeholders::remove);
+    this.placeholders.clear();
+    this.prefix = null;
   }
 
   public enum LoadResult {

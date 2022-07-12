@@ -59,6 +59,10 @@ class YamlConfigTest {
         Assertions.assertEquals("prefix value >> string value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
         Assertions.assertEquals("This is string with placeholders",
                 Placeholders.replace(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS, "string", "placeholders"));
+        Assertions.assertEquals("This is string with placeholders",
+                Placeholders.replace(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS2, "placeholders", "string"));
+        Assertions.assertEquals("value 1 value 2", Placeholders.replace(SettingsWithPrefix.IMP.ANOTHER_STRING_WITH_PLACEHOLDERS, "value 1", "value 2"));
+        Assertions.assertEquals("{PLACEHOLDER} {ANOTHER_PLACEHOLDER}", SettingsWithPrefix.IMP.ANOTHER_STRING_WITH_PLACEHOLDERS);
 
         this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("1"), "prefix value >> some value", 1234, "prefix value >> value", 10);
         this.assertNodeSequence(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.get("b"), "2nd string", 1234, "prefix value >> value", 10);
@@ -82,6 +86,11 @@ class YamlConfigTest {
         Assertions.assertEquals("a value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD1);
         Assertions.assertEquals("a changed value", SettingsWithPrefix.IMP.PREPEND.SAME_LINE.APPEND.FIELD2);
         Assertions.assertEquals("placeholders test", Placeholders.replace(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS, "test", "placeholders"));
+        Assertions.assertEquals("value 2 value 1", Placeholders.replace(SettingsWithPrefix.IMP.ANOTHER_STRING_WITH_PLACEHOLDERS, "value 1", "value 2"));
+        Assertions.assertEquals("{ANOTHER_PLACEHOLDER} {PLACEHOLDER}", SettingsWithPrefix.IMP.ANOTHER_STRING_WITH_PLACEHOLDERS);
+
+        System.out.println(System.identityHashCode(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS)
+                + " " + System.identityHashCode(SettingsWithPrefix.IMP.STRING_WITH_PLACEHOLDERS2));
 
         Assertions.assertNotNull(SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP);
         Assertions.assertEquals(2, SettingsWithPrefix.IMP.NODE_TEST.NODE_SEQ_MAP.size());
@@ -97,7 +106,21 @@ class YamlConfigTest {
         this.compareFiles("ChangedConfigWithPrefix.yml", configWithPrefixPath);
       }
 
-    Assertions.assertEquals(1, Placeholders.data.size());
+    Assertions.assertEquals(3, Placeholders.placeholders.size());
+    SettingsWithPrefix.IMP.dispose();
+    Assertions.assertEquals(0, Placeholders.placeholders.size());
+  }
+
+
+  @Test
+  void placeholdersTest() {
+    String stringWithPlaceholders = "{PLACEHOLDER1} {PLACEHOLDER2} {PLACEHOLDER3}";
+    Placeholders.addPlaceholders(stringWithPlaceholders, "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
+    Assertions.assertEquals("2 3 1", Placeholders.replace(stringWithPlaceholders, "1", "2", "3"));
+    Assertions.assertEquals(1, Placeholders.placeholders.size());
+
+    Placeholders.removePlaceholders(stringWithPlaceholders);
+    Assertions.assertEquals(0, Placeholders.placeholders.size());
   }
 
   @Test
@@ -220,8 +243,14 @@ class YamlConfigTest {
 
     public String REGULAR_FIELD = "{PRFX} regular value";
 
-    @Placeholders({ "test", "test2" })
+    @Placeholders({ "{TEST}", "test2" })
     public String STRING_WITH_PLACEHOLDERS = "This is {TEST} with {TEST2}";
+
+    @Placeholders({ "test2", "test" })
+    public String STRING_WITH_PLACEHOLDERS2 = "This is {TEST} with {TEST2}";
+
+    @Placeholders({ "PLACEHOLDER", "another-placeholder" })
+    public String ANOTHER_STRING_WITH_PLACEHOLDERS = "{PLACEHOLDER} {ANOTHER_PLACEHOLDER}";
 
     @Create
     public PREPEND PREPEND;
