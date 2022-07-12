@@ -137,14 +137,16 @@ public class YamlConfig {
       String key = oldPath + (oldPath.isEmpty() ? oldPath : ".") + entry.getKey();
       Object value = entry.getValue();
 
-      if (value instanceof String && usePrefix) {
-        String stringValue = (String) value;
-        if (this.prefix != null) {
-          value = stringValue.replace("{PRFX}", this.prefix);
-        }
+      if (value instanceof String) {
+        String stringValue = ((String) value).replace("{NL}", "\n");
+        if (usePrefix) {
+          if (this.prefix != null) {
+            value = stringValue.replace("{PRFX}", this.prefix);
+          }
 
-        if (key.equals("prefix")) {
-          this.prefix = stringValue;
+          if (key.equals("prefix")) {
+            this.prefix = stringValue;
+          }
         }
       }
 
