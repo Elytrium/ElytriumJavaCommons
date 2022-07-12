@@ -17,7 +17,6 @@
 
 package net.elytrium.java.commons.config;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -32,11 +31,6 @@ public class Placeholders {
   static class Data {
     String[] placeholders;
     String value;
-
-    @Override
-    public int hashCode() {
-      return 31 * Arrays.hashCode(this.placeholders) + this.value.hashCode();
-    }
   }
 
   static final Map<String, Data> data = new HashMap<>();

@@ -47,6 +47,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -56,6 +57,16 @@ import org.yaml.snakeyaml.Yaml;
 
 // TODO: Customizable placeholders, more docs
 public class YamlConfig {
+
+  private static final String PLACEHOLDER_ID_PREFIX;
+
+  static {
+    byte[] bytes = new byte[10];
+    ThreadLocalRandom.current().nextBytes(bytes);
+    PLACEHOLDER_ID_PREFIX = new String(bytes, StandardCharsets.UTF_8);
+  }
+
+  private static long counter = 0;
 
   private final Yaml yaml = new Yaml();
   private YamlConfig original;
@@ -173,6 +184,18 @@ public class YamlConfig {
           } else if (field.getAnnotation(Final.class) == null) {
             if (field.getType() == String.class && !(value instanceof String)) {
               value = String.valueOf(value);
+            } else if (usePrefix && field.getAnnotation(Placeholders.class) != null) {
+              if (field.getType() != String.class) {
+                throw new IllegalAccessException(field.getType() + " is incompatible with placeholders");
+              }
+              Placeholders placeholders = field.getAnnotation(Placeholders.class);
+              net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
+              data.placeholders = placeholders.value();
+              data.value = (String) value;
+              String placeholderKey = PLACEHOLDER_ID_PREFIX + (counter++);
+              net.elytrium.java.commons.config.Placeholders.data.put(placeholderKey, data);
+              this.placeholders.add(placeholderKey);
+              value = placeholderKey;
             } else if (field.getGenericType() instanceof ParameterizedType) {
               if (field.getType() == Map.class && value instanceof Map) {
                 Type parameterType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[1];
@@ -434,18 +457,6 @@ public class YamlConfig {
         }
         value = ((Map<?, ?>) value).entrySet().stream()
                 .collect(Collectors.toMap(e -> String.valueOf(e.getKey()), Map.Entry::getValue));
-      } else if (field.getAnnotation(Placeholders.class) != null) {
-        if (field.getType() != String.class) {
-          throw new IllegalAccessException(field.getType() + " is incompatible with placeholders");
-        }
-        Placeholders placeholders = field.getAnnotation(Placeholders.class);
-        net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
-        data.placeholders = placeholders.value();
-        data.value = (String) value;
-        String key = String.valueOf(data.hashCode());
-        net.elytrium.java.commons.config.Placeholders.data.put(key, data);
-        this.placeholders.add(key);
-        value = key;
       }
       field.set(owner, value);
     }
