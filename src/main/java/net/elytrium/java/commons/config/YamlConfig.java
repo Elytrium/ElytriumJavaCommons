@@ -354,7 +354,8 @@ public class YamlConfig {
           String valueToWrite = fieldValue;
 
           String idString = valueToWrite.replace("\"", "");
-          if (valueToWrite.startsWith("\"") && valueToWrite.endsWith("\"") && net.elytrium.java.commons.config.Placeholders.isID(idString)) {
+          if (valueToWrite.startsWith("\"") && valueToWrite.endsWith("\"")
+                  && net.elytrium.java.commons.config.Placeholders.data.containsKey(idString)) {
             valueToWrite = '"' + net.elytrium.java.commons.config.Placeholders.dataFromID(idString).value + '"';
           } else if (this.prefix != null) {
             if (fieldValue.startsWith("\"") && fieldValue.endsWith("\"")) { // String
