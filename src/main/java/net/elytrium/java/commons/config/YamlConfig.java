@@ -442,7 +442,7 @@ public class YamlConfig {
         net.elytrium.java.commons.config.Placeholders.Data data = new net.elytrium.java.commons.config.Placeholders.Data();
         data.placeholders = placeholders.value();
         data.value = (String) value;
-        String key = new String(new byte[] { 0x15, 0x7F }, StandardCharsets.UTF_8) + data.hashCode();
+        String key = String.valueOf(data.hashCode());
         net.elytrium.java.commons.config.Placeholders.data.put(key, data);
         this.placeholders.add(key);
         value = key;
